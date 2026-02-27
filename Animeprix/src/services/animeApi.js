@@ -1,0 +1,181 @@
+// Anime API Service - Using Backend Proxy
+// Consumer API provides metadata only; posters and streams must be proxied (AnimePahe anti-hotlink CDN).
+const BACKEND_API = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001/api';
+
+/** Proxify image URL so browser never hits i.animepahe.si directly (avoids 403). */
+export const proxyImageUrl = (url) => {
+  if (!url || typeof url !== 'string') return url;
+  if (!/^https?:\/\//i.test(url)) return url;
+  if (url.includes('/api/image?url=')) return url;
+  return `${BACKEND_API}/image?url=${encodeURIComponent(url)}`;
+};
+
+const proxifyMediaUrl = (url) => {
+  if (!url || typeof url !== 'string') return url;
+  if (!/^https?:\/\//i.test(url)) return url;
+  if (url.includes('/api/stream?url=')) return url;
+  return `${BACKEND_API}/stream?url=${encodeURIComponent(url)}`;
+};
+
+const fetchFromBackend = async (endpoint) => {
+  try {
+    const url = `${BACKEND_API}${endpoint}`;
+    console.log('Fetching from backend:', url);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    }).catch((networkError) => {
+      throw new Error(
+        'Cannot connect to backend server. Make sure it is running on port 3001. Run "cd backend && npm start".'
+      );
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.error || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error('Backend API Error:', error);
+    if (
+      error.message.includes('Failed to fetch') ||
+      error.message.includes('NetworkError') ||
+      error.message.includes('Load failed')
+    ) {
+      throw new Error(
+        'Cannot connect to backend server. Make sure the backend is running on port 3001.'
+      );
+    }
+    throw error;
+  }
+};
+
+export const PROVIDER_LABELS = {
+  animepahe: 'AnimePahe',
+  animeunity: 'AnimeUnity',
+  hianime: 'HiAnime',
+  animekai: 'AnimeKai',
+  animesaturn: 'AnimeSaturn',
+  kickassanime: 'KickAssAnime',
+  gogoanime: 'Gogoanime',
+  zoro: 'Zoro',
+};
+
+/** Get list of provider keys from backend (single source of truth). */
+export const getProviders = async () => {
+  try {
+    const data = await fetchFromBackend('/providers');
+    return Array.isArray(data?.providers) ? data.providers : [];
+  } catch {
+    // Conservative fallback avoids exposing providers that backend/Consumet can't serve.
+    return ['animepahe'];
+  }
+};
+
+/** Provider is required by backend. Default only for backward compat on hero search. */
+export const searchAnime = async (query, provider = 'animepahe') => {
+  return fetchFromBackend(`/search?q=${encodeURIComponent(query)}&provider=${encodeURIComponent(provider)}`);
+};
+
+export const getAnimeInfo = async (animeId, provider) => {
+  if (!provider) throw new Error('Provider is required');
+  return fetchFromBackend(`/anime/${animeId}?provider=${encodeURIComponent(provider)}`);
+};
+
+// Backend /api/watch expects: episodeId and provider (no fallback).
+export const getStreamingLinks = async (episodeId, provider) => {
+  if (!provider) {
+    return { sources: [], fallback: true, message: 'Streaming source temporarily unavailable.' };
+  }
+  try {
+    const endpoint = `/watch?episodeId=${encodeURIComponent(episodeId)}&provider=${encodeURIComponent(provider)}`;
+    console.log('[DEBUG] getStreamingLinks — episodeId:', episodeId);
+    console.log('[DEBUG] getStreamingLinks — backend URL:', `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001/api'}${endpoint}`);
+
+    const data = await fetchFromBackend(endpoint);
+    if (data?.error === 'PROVIDER_BLOCKED' || data?.error === 'PROVIDER_FAILED') {
+      return {
+        sources: [],
+        fallback: true,
+        message: 'Streaming source temporarily unavailable.',
+      };
+    }
+    console.log(
+      '[DEBUG] getStreamingLinks — response:',
+      JSON.stringify({
+        sourcesCount: data?.sources?.length ?? 0,
+        downloadCount: data?.download?.length ?? 0,
+        linksCount: data?.links?.length ?? 0,
+      })
+    );
+
+    const combinedSources = [];
+    // Prefer downloadable MP4 links first (more reliable than HLS sources requiring Referer).
+    if (Array.isArray(data.download)) {
+      combinedSources.push(
+        ...data.download.map((item) => ({
+          url: proxifyMediaUrl(item.url),
+          quality: item.quality || 'download',
+          type: 'download',
+        }))
+      );
+    }
+    if (Array.isArray(data.sources)) {
+      combinedSources.push(...data.sources.map((item) => {
+        if (typeof item === 'string') return { url: proxifyMediaUrl(item), quality: 'source' };
+        return { ...item, url: proxifyMediaUrl(item?.url || item?.file || item?.src) };
+      }));
+    }
+    if (Array.isArray(data.links)) {
+      combinedSources.push(...data.links.map((item) => {
+        if (typeof item === 'string') return { url: proxifyMediaUrl(item), quality: 'link' };
+        return { ...item, url: proxifyMediaUrl(item?.url || item?.file || item?.src) };
+      }));
+    }
+    if (combinedSources.length > 0) {
+      return { sources: combinedSources };
+    }
+    if (data.url) return { sources: [{ url: proxifyMediaUrl(data.url), quality: 'default' }] };
+    return {
+      sources: [],
+      fallback: true,
+      message: data.message || 'Streaming temporarily unavailable.',
+    };
+  } catch (error) {
+    console.error('Streaming links error:', error);
+    const msg = error?.message || '';
+    return {
+      sources: [],
+      fallback: true,
+      message: (msg.includes('PROVIDER_BLOCKED') || msg.includes('PROVIDER_FAILED')) ? 'Streaming source temporarily unavailable.' : 'Streaming temporarily unavailable.',
+    };
+  }
+};
+
+export const getTrendingAnime = async () => fetchFromBackend('/trending');
+
+// ─── Direct Consumet search (used only by AnimeSearch page)
+const CONSUMET_API_BASE = 'http://localhost:3002/anime';
+const VALID_PROVIDERS = ['animepahe', 'animeunity', 'hianime', 'animekai', 'animesaturn', 'kickassanime'];
+
+export const searchAnimeDirect = async (animeName, provider = 'animepahe') => {
+  if (!animeName?.trim()) throw new Error('Anime name is required');
+  if (!VALID_PROVIDERS.includes(provider))
+    throw new Error(`Invalid provider. Must be one of: ${VALID_PROVIDERS.join(', ')}`);
+
+  const url = `${CONSUMET_API_BASE}/${provider}/${encodeURIComponent(animeName.trim())}`;
+  console.log('Fetching from Consumet API:', url);
+
+  const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.message || `HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  if (data.results && Array.isArray(data.results)) return { results: data.results, provider };
+  if (Array.isArray(data)) return { results: data, provider };
+  return { results: [], provider };
+};
