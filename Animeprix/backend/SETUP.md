@@ -20,7 +20,7 @@ cp .env.example .env
 The `.env` file will contain:
 ```
 PORT=3001
-FRONTEND_URL=http://localhost:5173
+FRONTEND_URL=https://animepixel-three.vercel.app
 ```
 
 ### 4. Start the Backend Server
@@ -34,7 +34,7 @@ npm run dev
 ```
 
 ### 5. Verify Backend is Running
-Open your browser and visit: `http://localhost:3001/api/health`
+Open your browser and visit: `<your-backend-url>/api/health`
 
 You should see:
 ```json
@@ -47,10 +47,10 @@ You should see:
 ### 6. Update Frontend Environment (Optional)
 Create a `.env` file in the root of your React project:
 ```
-VITE_BACKEND_URL=http://localhost:3001/api
+VITE_API_BASE_URL=<your-backend-url>
 ```
 
-If you don't create this, it will default to `http://localhost:3001/api`.
+If you don't create this, it will default to your configured production backend URL.
 
 ## API Endpoints
 
@@ -91,6 +91,6 @@ GET /api/trending
 - Always validate and sanitize user inputs
 
 ### CORS
-- Backend allows requests from `http://localhost:5173` by default
-- Update `FRONTEND_URL` in `.env` if your frontend uses a different port
+- Backend allows requests from `FRONTEND_URL`
+- Update `FRONTEND_URL` in `.env` to match your frontend origin exactly
 

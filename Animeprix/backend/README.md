@@ -26,7 +26,7 @@ Express.js backend proxy server for Animeprix frontend.
    ```
 
 4. **Verify it's running:**
-   Visit `http://localhost:3001/api/health`
+   Visit `<your-backend-url>/api/health`
 
 ## API Endpoints
 
@@ -38,6 +38,6 @@ Express.js backend proxy server for Animeprix frontend.
 
 ## CORS Configuration
 
-The server is configured to allow requests from `http://localhost:5173` (Vite default).
-Update `FRONTEND_URL` in `.env` if your frontend runs on a different port.
+The server is configured to allow requests from `FRONTEND_URL`.
+Set `FRONTEND_URL` in `.env` to your deployed frontend origin.
 

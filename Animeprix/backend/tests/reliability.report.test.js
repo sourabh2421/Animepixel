@@ -268,7 +268,15 @@ async function gatherApiReliability() {
       const lines = String(res.text || '').split('\n');
       const firstSegmentProxy = lines.find((l) => l && !l.startsWith('#') && l.includes('/api/hls?url='));
       if (firstSegmentProxy) {
-        const hlsRes = await request(app).get(firstSegmentProxy.replace('http://127.0.0.1', '').replace('http://localhost:3001', ''));
+        const hlsPath = (() => {
+          try {
+            const parsed = new URL(firstSegmentProxy);
+            return `${parsed.pathname}${parsed.search}`;
+          } catch {
+            return firstSegmentProxy;
+          }
+        })();
+        const hlsRes = await request(app).get(hlsPath);
         const hlsOk = hlsRes.status === 200 || hlsRes.status === 206;
         addStat(apiStats, '/api/hls', hlsOk, `status=${hlsRes.status}`);
         markResult({ testName: 'api hls', endpointOrProvider: '/api/hls', area: 'api', status: hlsOk ? 'PASS' : 'FAIL', reason: hlsOk ? '' : hlsRes.text });

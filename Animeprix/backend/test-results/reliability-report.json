@@ -1,20 +1,20 @@
 {
   "summary": {
-    "totalTests": 11,
-    "passed": 10,
-    "failed": 1,
-    "failurePct": 9.09
+    "totalTests": 6,
+    "passed": 1,
+    "failed": 5,
+    "failurePct": 83.33
   },
   "providerReliability": [
     {
       "provider": "animepahe",
-      "success": 3,
-      "fail": 0,
-      "successPct": 100,
+      "success": 0,
+      "fail": 3,
+      "successPct": 0,
       "notes": [
-        "search ok",
-        "anime details ok",
-        "stream ok"
+        "search failed: animepahe search timeout",
+        "anime details skipped (no search id)",
+        "stream skipped (no episode id)"
       ]
     }
   ],
@@ -29,69 +29,52 @@
     },
     {
       "endpoint": "/api/search",
-      "success": 1,
-      "fail": 0,
+      "success": 0,
+      "fail": 1,
       "notes": [
-        "provider=animepahe status=200"
+        "provider=animepahe status=502"
       ]
     },
     {
       "endpoint": "/api/anime/:id",
-      "success": 1,
-      "fail": 0,
+      "success": 0,
+      "fail": 1,
       "notes": [
-        "provider=animepahe status=200"
+        "Not testable from code/runtime: no anime id from search"
       ]
     },
     {
       "endpoint": "/api/watch",
-      "success": 1,
-      "fail": 0,
+      "success": 0,
+      "fail": 1,
       "notes": [
-        "provider=animepahe status=200"
+        "Not testable from code/runtime: no anime id from search"
       ]
     },
     {
       "endpoint": "/api/image",
-      "success": 1,
-      "fail": 0,
-      "notes": [
-        "status=200"
-      ]
-    },
-    {
-      "endpoint": "/api/stream",
-      "success": 1,
-      "fail": 1,
-      "notes": [
-        "status=200",
-        "Invalid URL"
-      ]
-    },
-    {
-      "endpoint": "/api/hls",
       "success": 0,
       "fail": 1,
       "notes": [
-        "Not testable after stream failure: Invalid URL"
+        "Not testable from code/runtime: no anime info image"
       ]
     }
   ],
   "streamingReliability": [
     {
       "type": "HLS",
-      "success": 1,
-      "fail": 0,
+      "success": 0,
+      "fail": 1,
       "notes": [
-        "hls source present"
+        "Not testable from code/runtime"
       ]
     },
     {
       "type": "MP4",
-      "success": 1,
-      "fail": 0,
+      "success": 0,
+      "fail": 1,
       "notes": [
-        "mp4 source present"
+        "Not testable from code/runtime"
       ]
     },
     {
@@ -99,7 +82,7 @@
       "success": 0,
       "fail": 1,
       "notes": [
-        "watch endpoint healthy"
+        "Not testable from code/runtime"
       ]
     }
   ],
@@ -108,25 +91,25 @@
       "testName": "provider search",
       "endpointOrProvider": "animepahe",
       "area": "provider",
-      "status": "PASS",
-      "reason": "",
-      "at": "2026-03-26T12:45:14.993Z"
+      "status": "FAIL",
+      "reason": "animepahe search timeout",
+      "at": "2026-03-26T13:02:51.530Z"
     },
     {
       "testName": "provider anime details",
       "endpointOrProvider": "animepahe",
       "area": "provider",
-      "status": "PASS",
-      "reason": "",
-      "at": "2026-03-26T12:45:15.676Z"
+      "status": "FAIL",
+      "reason": "Not testable from code/runtime: no search result id",
+      "at": "2026-03-26T13:02:51.532Z"
     },
     {
       "testName": "provider stream",
       "endpointOrProvider": "animepahe",
       "area": "provider",
-      "status": "PASS",
-      "reason": "",
-      "at": "2026-03-26T12:45:27.678Z"
+      "status": "FAIL",
+      "reason": "Not testable from code/runtime: no episode id",
+      "at": "2026-03-26T13:02:51.532Z"
     },
     {
       "testName": "api providers",
@@ -134,63 +117,23 @@
       "area": "api",
       "status": "PASS",
       "reason": "",
-      "at": "2026-03-26T12:45:27.699Z"
+      "at": "2026-03-26T13:02:51.551Z"
     },
     {
       "testName": "api search",
       "endpointOrProvider": "/api/search",
       "area": "api",
-      "status": "PASS",
-      "reason": "",
-      "at": "2026-03-26T12:45:28.205Z"
-    },
-    {
-      "testName": "api anime details",
-      "endpointOrProvider": "/api/anime/:id",
-      "area": "api",
-      "status": "PASS",
-      "reason": "",
-      "at": "2026-03-26T12:45:28.797Z"
-    },
-    {
-      "testName": "api watch",
-      "endpointOrProvider": "/api/watch",
-      "area": "api",
-      "status": "PASS",
-      "reason": "",
-      "at": "2026-03-26T12:45:40.971Z"
-    },
-    {
-      "testName": "api image",
-      "endpointOrProvider": "/api/image",
-      "area": "api",
-      "status": "PASS",
-      "reason": "",
-      "at": "2026-03-26T12:45:41.460Z"
-    },
-    {
-      "testName": "api stream",
-      "endpointOrProvider": "/api/stream",
-      "area": "api",
-      "status": "PASS",
-      "reason": "",
-      "at": "2026-03-26T12:45:42.201Z"
-    },
-    {
-      "testName": "api stream",
-      "endpointOrProvider": "/api/stream",
-      "area": "api",
       "status": "FAIL",
-      "reason": "Invalid URL",
-      "at": "2026-03-26T12:45:42.202Z"
+      "reason": "{\"success\":false,\"error\":\"PROVIDER_UNAVAILABLE\",\"message\":\"Currently using fallback provider (AnimePahe)\",\"provider\":\"animepahe\",\"details\":\"AnimePahe search failed: AnimePahe API failed: 403\",\"results\":[]}",
+      "at": "2026-03-26T13:03:12.399Z"
     },
     {
       "testName": "frontend flow simulation (search->watch)",
       "endpointOrProvider": "frontend-simulated-via-api",
       "area": "frontend",
-      "status": "PASS",
-      "reason": "",
-      "at": "2026-03-26T12:45:50.092Z"
+      "status": "FAIL",
+      "reason": "no anime id from search",
+      "at": "2026-03-26T13:03:33.526Z"
     }
   ]
 }

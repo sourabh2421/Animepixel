@@ -15,12 +15,12 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-const FRONTEND_ORIGIN = process.env.FRONTEND_URL || 'http://localhost:5173';
+const FRONTEND_ORIGIN = process.env.FRONTEND_URL || '';
 const API_BASE_URL =
   process.env.CONSUMET_URL ||
   process.env.API_BASE_URL ||
   process.env.CONSUMET_API_URL ||
-  'http://localhost:3002/anime';
+  'https://animepahe.ru';
 const API_KEY = process.env.API_KEY || '';
 const API_KEY_REQUIRED = process.env.API_KEY_REQUIRED === 'true';
 
@@ -31,24 +31,12 @@ if (API_KEY_REQUIRED && !API_KEY) {
   throw new Error('Missing API_KEY in environment. Set API_KEY or disable API_KEY_REQUIRED.');
 }
 
-const allowedOrigins = Array.from(new Set([
-  'http://localhost:5173',
-  'https://animepixel-three.vercel.app',
-  FRONTEND_ORIGIN,
-].filter(Boolean)));
-
-// TEMP: set CORS_ALLOW_ALL=true only for emergency debugging, then remove/disable in production.
-if (process.env.CORS_ALLOW_ALL === 'true') {
+console.log('Allowed frontend:', FRONTEND_ORIGIN || '*');
+if (!FRONTEND_ORIGIN) {
   app.use(cors({ origin: '*' }));
 } else {
   app.use(cors({
-    origin(origin, callback) {
-      // Allow non-browser requests (Postman/curl/server-to-server).
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
-      console.log('Blocked by CORS:', origin);
-      return callback(new Error('Not allowed by CORS'));
-    },
+    origin: FRONTEND_ORIGIN,
     credentials: true,
   }));
 }
@@ -242,10 +230,10 @@ app.get('/api/search', async (req, res) => {
     return res.json(payload);
   } catch (err) {
     console.error('Search error:', err.message);
-    return res.status(502).json({
+    return res.status(500).json({
       success: false,
-      error: 'PROVIDER_UNAVAILABLE',
-      message: 'Currently using fallback provider (AnimePahe)',
+      error: 'SEARCH_FAILED',
+      message: 'Search failed',
       provider: providerResolution.resolved,
       details: err.message,
       results: [],
