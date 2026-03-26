@@ -4,7 +4,15 @@ import Hls from 'hls.js';
 import Navbar from '../components/navbar';
 import Footer from '../components/Footer';
 import ShareButton from '../components/ShareButton';
-import { getAnimeInfo, getStreamingLinks, getProviders, searchAnime, proxyImageUrl, PROVIDER_LABELS } from '../services/animeApi';
+import {
+  getAnimeInfo,
+  getStreamingLinks,
+  getProviders,
+  searchAnime,
+  proxyImageUrl,
+  PROVIDER_LABELS,
+  buildProxyMediaUrl,
+} from '../services/animeApi';
 import { checkBackendHealth } from '../utils/backendHealth';
 
 const WatchAnime = () => {
@@ -22,16 +30,11 @@ const WatchAnime = () => {
   const [useExternalPlayer, setUseExternalPlayer] = useState(false);
   const [backendAvailable, setBackendAvailable] = useState(true);
   const [providerList, setProviderList] = useState([]);
+  const [useProxyPlayback, setUseProxyPlayback] = useState(false);
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
   const streamingLinksRef = useRef([]);
-  const BACKEND_API = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001/api';
-  const proxyMediaUrl = (url) => {
-    if (!url || typeof url !== 'string') return url;
-    if (!/^https?:\/\//i.test(url)) return url;
-    if (url.includes('/api/stream?url=')) return url;
-    return `${BACKEND_API}/stream?url=${encodeURIComponent(url)}`;
-  };
+  const proxyFallbackTriedRef = useRef(new Set());
   const canUseNativeHls = () => {
     if (typeof document === 'undefined') return false;
     const video = document.createElement('video');
@@ -61,8 +64,7 @@ const WatchAnime = () => {
     const best = results.find((item) => normalizeTitle(item?.title || item?.name) === target) || results[0];
     return best?.id || best?.providerId;
   };
-  // ─── FIXED: initialise provider from location state immediately
-  const [selectedProvider, setSelectedProvider] = useState(location.state?.provider || null);
+  const [selectedProvider, setSelectedProvider] = useState('animepahe');
 
   useEffect(() => {
     checkBackendHealth().then(setBackendAvailable);
@@ -105,7 +107,7 @@ const WatchAnime = () => {
           return;
         }
 
-        const provider = location.state?.provider || selectedProvider;
+        const provider = selectedProvider;
         if (!provider) {
           if (!location.state?.animeData) setAnimeInfo(prev => ({ ...prev, id }));
           setLoading(false);
@@ -161,6 +163,7 @@ const WatchAnime = () => {
       setStreamingLinks(null);
       setSelectedSource(null);
       setVideoUrl(null);
+      setUseProxyPlayback(false);
       setUseExternalPlayer(false);
 
       const isHealthy = await checkBackendHealth();
@@ -211,6 +214,7 @@ const WatchAnime = () => {
         setSelectedSource(preferred);
         const url = preferred?.url || preferred?.file || preferred?.src || (typeof preferred === 'string' ? preferred : null);
         if (url) setVideoUrl(url);
+        setUseProxyPlayback(false);
         setError(null);
       } else {
         setError(links.message || 'No streaming sources available for this episode.');
@@ -233,7 +237,7 @@ const WatchAnime = () => {
     }
 
     const video = videoRef.current;
-    const playbackUrl = proxyMediaUrl(videoUrl);
+    const playbackUrl = useProxyPlayback ? buildProxyMediaUrl(videoUrl) : videoUrl;
     const isHlsStream = playbackUrl.includes('.m3u8');
     if (!isHlsStream) return;
 
@@ -258,6 +262,15 @@ const WatchAnime = () => {
       hls.on(Hls.Events.ERROR, (_, data) => {
         if (data?.fatal) {
           console.error('[HLS] Fatal playback error:', data);
+          if (!useProxyPlayback) {
+            const key = `${videoUrl}::proxy`;
+            if (!proxyFallbackTriedRef.current.has(key)) {
+              proxyFallbackTriedRef.current.add(key);
+              setUseProxyPlayback(true);
+              setError('Direct HLS failed, switched to backend proxy fallback.');
+              return;
+            }
+          }
           const fallback = pickPreferredSource((streamingLinksRef.current || []).filter((s) => {
             const url = s?.url || s?.file || s?.src || (typeof s === 'string' ? s : null);
             return url && !isHlsUrl(url);
@@ -282,7 +295,7 @@ const WatchAnime = () => {
     }
 
     setError('HLS not supported in this browser for this source.');
-  }, [videoUrl]);
+  }, [videoUrl, useProxyPlayback]);
 
   // ─── Provider change handler ───────────────────────────────────────────────
   const handleProviderChange = async (newProvider) => {
@@ -296,6 +309,7 @@ const WatchAnime = () => {
     setStreamingLinks(null);
     setSelectedSource(null);
     setVideoUrl(null);
+    setUseProxyPlayback(false);
     setUseExternalPlayer(false);
 
     try {
@@ -482,17 +496,35 @@ const WatchAnime = () => {
                   <video
                     ref={videoRef}
                     controls
-                    src={(videoUrl.includes('.m3u8') && !canUseNativeHls()) ? undefined : proxyMediaUrl(videoUrl)}
+                    src={(videoUrl.includes('.m3u8') && !canUseNativeHls())
+                      ? undefined
+                      : (useProxyPlayback ? buildProxyMediaUrl(videoUrl) : videoUrl)}
                     className="w-full h-full"
                     autoPlay
                     crossOrigin="anonymous"
                     playsInline
-                    onError={() => setError('Video playback failed. Try another source/quality.')}
+                    onError={() => {
+                      if (!useProxyPlayback) {
+                        const key = `${videoUrl}::proxy`;
+                        if (!proxyFallbackTriedRef.current.has(key)) {
+                          proxyFallbackTriedRef.current.add(key);
+                          setUseProxyPlayback(true);
+                          setError('Direct stream failed, switched to backend proxy fallback.');
+                          return;
+                        }
+                      }
+                      setError('Video playback failed. Try another source/quality.');
+                    }}
                   >
                     Your browser does not support the video tag.
                   </video>
                 ) : (
-                  <iframe src={proxyMediaUrl(videoUrl)} title="Anime Player" className="w-full h-full" allowFullScreen />
+                  <iframe
+                    src={useProxyPlayback ? buildProxyMediaUrl(videoUrl) : videoUrl}
+                    title="Anime Player"
+                    className="w-full h-full"
+                    allowFullScreen
+                  />
                 )}
               </div>
 
@@ -505,7 +537,10 @@ const WatchAnime = () => {
                       const src = streamingLinks[+e.target.value];
                       setSelectedSource(src);
                       const url = src?.url || src?.file || src?.src || src;
-                      if (url) setVideoUrl(url);
+                      if (url) {
+                        setVideoUrl(url);
+                        setUseProxyPlayback(false);
+                      }
                     }}
                     className="bg-gray-800 text-white px-4 py-2 rounded-lg"
                   >

@@ -2,7 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import axios from 'axios';
 import dotenv from 'dotenv';
-import { initProviders, getProvider, listProviders } from './providers/index.js';
+import {
+  initProviders,
+  getProvider,
+  getAvailableProviders,
+  getDefaultProvider,
+  listProviders,
+} from './providers/index.js';
 
 dotenv.config();
 
@@ -40,44 +46,50 @@ const consumerAxiosHeaders = {
 };
 
 initProviders(API_BASE_URL, consumerAxiosHeaders);
+const DEFAULT_PROVIDER = getDefaultProvider();
+const ACTIVE_PROVIDERS = getAvailableProviders();
 
 const providerHealthCache = {
   expiresAt: 0,
   providers: [],
 };
 
-const withTimeout = (promise, ms, label) =>
-  Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error(`${label} timeout`)), ms)),
-  ]);
+const SEARCH_TTL_MS = Number(process.env.SEARCH_CACHE_TTL_MS || 10 * 60 * 1000);
+const ANIME_TTL_MS = Number(process.env.ANIME_CACHE_TTL_MS || 10 * 60 * 1000);
+const searchCache = new Map();
+const animeCache = new Map();
 
 async function getHealthyProviders() {
   const now = Date.now();
-  if (providerHealthCache.expiresAt > now && providerHealthCache.providers.length) {
-    return providerHealthCache.providers;
-  }
-
-  const all = listProviders();
-  const checks = await Promise.all(
-    all.map(async (name) => {
-      try {
-        const provider = getProvider(name);
-        // Lightweight probe to avoid exposing providers that consistently 404/timeout.
-        await withTimeout(provider.search('naruto'), 8000, `${name} search`);
-        return name;
-      } catch {
-        return null;
-      }
-    })
-  );
-
-  const healthy = checks.filter(Boolean);
-  const providers = healthy.length ? healthy : ['animepahe'];
-  providerHealthCache.providers = providers;
-  providerHealthCache.expiresAt = now + 2 * 60 * 1000; // 2 minutes
-  return providers;
+  if (providerHealthCache.expiresAt > now && providerHealthCache.providers.length) return providerHealthCache.providers;
+  providerHealthCache.providers = [...ACTIVE_PROVIDERS];
+  providerHealthCache.expiresAt = now + 2 * 60 * 1000;
+  return providerHealthCache.providers;
 }
+
+const resolveProviderName = (requestedProvider) => {
+  const requested = (typeof requestedProvider === 'string' ? requestedProvider : '').toLowerCase().trim();
+  const resolved = DEFAULT_PROVIDER;
+  const usedFallback = !requested || requested !== resolved;
+  if (usedFallback) {
+    console.warn(`[provider-fallback] requested="${requested || 'none'}" -> using "${resolved}"`);
+  }
+  return { requested, resolved, usedFallback };
+};
+
+const getCacheEntry = (cache, key) => {
+  const item = cache.get(key);
+  if (!item) return null;
+  if (item.expiresAt < Date.now()) {
+    cache.delete(key);
+    return null;
+  }
+  return item.value;
+};
+
+const setCacheEntry = (cache, key, value, ttlMs) => {
+  cache.set(key, { value, expiresAt: Date.now() + ttlMs });
+};
 
 const isPlayableMediaUrl = (value) =>
   typeof value === 'string' &&
@@ -101,10 +113,14 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Animeprix Backend is running' });
 });
 
-// ─── List providers (no fallback; frontend uses this for dropdown)
+// ─── List providers (AnimePahe-only active set)
 app.get('/api/providers', async (req, res) => {
   const providers = await getHealthyProviders();
-  res.json({ providers });
+  res.json({
+    providers,
+    defaultProvider: DEFAULT_PROVIDER,
+    inactiveProviders: ['animeunity', 'hianime', 'animekai', 'animesaturn', 'kickassanime', 'gogoanime', 'zoro'],
+  });
 });
 
 // ─── Image proxy: bypass AnimePahe CDN anti-hotlinking (i.animepahe.si returns 403 without Referer).
@@ -172,17 +188,21 @@ app.get('/api/image', async (req, res) => {
   }
 });
 
-// ─── Search (provider required; no fallback)
+// ─── Search (always resolves to AnimePahe)
 app.get('/api/search', async (req, res) => {
   const searchQuery = req.query.q || req.query.query;
-  const providerName = req.query.provider;
+  const providerResolution = resolveProviderName(req.query.provider);
 
   if (!searchQuery) return res.status(400).json({ error: 'Search query is required' });
-  if (!providerName) return res.status(400).json({ error: 'Provider is required' });
 
   try {
-    const provider = getProvider(providerName);
-    console.log('Using provider:', providerName);
+    const provider = getProvider(providerResolution.resolved);
+    console.log('Using provider:', providerResolution.resolved);
+
+    const cacheKey = `${providerResolution.resolved}:${String(searchQuery).toLowerCase().trim()}`;
+    const cached = getCacheEntry(searchCache, cacheKey);
+    if (cached) return res.json(cached);
+
     const data = await provider.search(searchQuery);
     const results = (data.results || []).map((a) => ({
       id: a.id,
@@ -195,85 +215,114 @@ app.get('/api/search', async (req, res) => {
       releaseDate: a.releaseDate,
       status: a.status,
       genre: a.genre || [],
-      provider: a.provider,
+      provider: providerResolution.resolved,
       providerId: a.providerId,
     }));
-    return res.json({ results });
+    const payload = {
+      results,
+      provider: providerResolution.resolved,
+      usedFallbackProvider: providerResolution.usedFallback,
+    };
+    setCacheEntry(searchCache, cacheKey, payload, SEARCH_TTL_MS);
+    return res.json(payload);
   } catch (err) {
-    const isInvalidProvider = err.message?.includes('Invalid provider');
-    if (isInvalidProvider) return res.status(400).json({ error: err.message });
     console.error('Search error:', err.message);
     return res.status(502).json({
-      error: 'PROVIDER_FAILED',
-      provider: providerName,
-      message: err.message,
+      success: false,
+      error: 'PROVIDER_UNAVAILABLE',
+      message: 'Currently using fallback provider (AnimePahe)',
+      provider: providerResolution.resolved,
+      details: err.message,
       results: [],
     });
   }
 });
 
-// ─── Anime info (provider required; no fallback)
+// ─── Anime info (always resolves to AnimePahe)
 app.get('/api/anime/:id', async (req, res) => {
   const { id } = req.params;
-  const providerName = req.query.provider;
-
-  if (!providerName) return res.status(400).json({ error: 'Provider is required' });
+  const providerResolution = resolveProviderName(req.query.provider);
 
   try {
-    const provider = getProvider(providerName);
-    console.log('Using provider:', providerName);
+    const provider = getProvider(providerResolution.resolved);
+    console.log('Using provider:', providerResolution.resolved);
+
+    const cacheKey = `${providerResolution.resolved}:${id}`;
+    const cached = getCacheEntry(animeCache, cacheKey);
+    if (cached) return res.json(cached);
+
     const data = await provider.getAnime(id);
-    res.json({
+    const payload = {
       id: data.id,
       title: data.title,
       image: data.poster,
       description: data.description,
       episodes: data.episodes || [],
       episodeCount: data.episodeCount,
-      provider: data.provider,
+      provider: providerResolution.resolved,
       providerId: data.providerId,
       releaseDate: data.releaseDate,
       status: data.status,
       genre: data.genre || [],
-    });
+      usedFallbackProvider: providerResolution.usedFallback,
+    };
+    setCacheEntry(animeCache, cacheKey, payload, ANIME_TTL_MS);
+    res.json(payload);
   } catch (err) {
-    if (err.message?.includes('Invalid provider')) return res.status(400).json({ error: err.message });
     console.error('Anime route error:', err.message);
     return res.status(502).json({
-      error: 'PROVIDER_FAILED',
-      provider: providerName,
-      message: err.message,
+      success: false,
+      error: 'PROVIDER_UNAVAILABLE',
+      message: 'Currently using fallback provider (AnimePahe)',
+      provider: providerResolution.resolved,
+      details: err.message,
     });
   }
 });
 
-// ─── Watch / stream links (episodeId and provider required; no fallback)
+// ─── Watch / stream links (always resolves to AnimePahe)
 app.get('/api/watch', async (req, res) => {
-  const { episodeId, provider: providerName } = req.query;
+  const { episodeId } = req.query;
+  const providerResolution = resolveProviderName(req.query.provider);
 
   if (!episodeId) return res.status(400).json({ error: 'episodeId required' });
-  if (!providerName) return res.status(400).json({ error: 'provider required' });
 
   try {
-    const provider = getProvider(providerName);
-    console.log('Using provider:', providerName);
+    const provider = getProvider(providerResolution.resolved);
+    console.log('Using provider:', providerResolution.resolved);
     const data = await provider.getStream(episodeId);
     const playableSources = filterPlayableSources(data.sources);
     if (!playableSources.length) {
       return res.status(502).json({
-        error: 'PROVIDER_FAILED',
-        provider: providerName,
+        success: false,
+        error: 'PROVIDER_UNAVAILABLE',
+        provider: providerResolution.resolved,
         message: 'No playable stream URLs returned',
       });
     }
-    res.json({ headers: data.headers || {}, sources: playableSources });
+    const mp4Sources = playableSources.filter((s) => /\.mp4($|\?)/i.test(s.url));
+    const hlsSources = playableSources.filter((s) => /\.m3u8($|\?)/i.test(s.url));
+    const orderedSources = [...mp4Sources, ...hlsSources, ...playableSources.filter((s) => !mp4Sources.includes(s) && !hlsSources.includes(s))];
+    const sourcesWithFallback = orderedSources.map((source) => ({
+      ...source,
+      // Direct URL first for low-latency startup; proxy remains available as fallback.
+      proxyUrl: `${req.protocol}://${req.get('host')}/api/stream?url=${encodeURIComponent(source.url)}`,
+    }));
+    res.json({
+      headers: data.headers || {},
+      sources: sourcesWithFallback,
+      provider: providerResolution.resolved,
+      usedFallbackProvider: providerResolution.usedFallback,
+      playbackMode: 'direct-preferred',
+    });
   } catch (err) {
-    if (err.message?.includes('Invalid provider')) return res.status(400).json({ error: err.message });
     console.error('Watch error:', err.message);
     return res.status(502).json({
-      error: 'PROVIDER_FAILED',
-      provider: providerName,
-      message: err.message,
+      success: false,
+      error: 'PROVIDER_UNAVAILABLE',
+      message: 'Currently using fallback provider (AnimePahe)',
+      provider: providerResolution.resolved,
+      details: err.message,
     });
   }
 });
@@ -522,10 +571,14 @@ app.use((err, req, res, next) => {
 
 app.use((req, res) => res.status(404).json({ error: 'Route not found' }));
 
-app.listen(PORT, () => {
-  console.log(`🚀 Animeprix Backend running on http://localhost:${PORT}`);
-  console.log(`❤️  Health endpoint: http://localhost:${PORT}/api/health`);
-  console.log(`🌐 Frontend origin: ${FRONTEND_ORIGIN}`);
-  console.log(`🎬 Consumer API: ${API_BASE_URL}`);
-  console.log(`📝 Providers (no fallback): ${listProviders().join(', ')}`);
-});
+export { app, getHealthyProviders };
+
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Animeprix Backend running on http://localhost:${PORT}`);
+    console.log(`❤️  Health endpoint: http://localhost:${PORT}/api/health`);
+    console.log(`🌐 Frontend origin: ${FRONTEND_ORIGIN}`);
+    console.log(`🎬 Consumer API: ${API_BASE_URL}`);
+    console.log(`📝 Providers (no fallback): ${listProviders().join(', ')}`);
+  });
+}

@@ -8,7 +8,7 @@ import { searchAnime, getProviders, proxyImageUrl, PROVIDER_LABELS } from '../se
 const SearchResults = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
-  const provider = searchParams.get('provider') || 'animepahe';
+  const provider = 'animepahe';
   const [providers, setProviders] = useState([]);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +21,7 @@ const SearchResults = () => {
   const setProvider = (newProvider) => {
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      next.set('provider', newProvider);
+      next.set('provider', 'animepahe');
       return next;
     });
   };

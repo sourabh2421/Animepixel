@@ -1,0 +1,196 @@
+{
+  "summary": {
+    "totalTests": 11,
+    "passed": 10,
+    "failed": 1,
+    "failurePct": 9.09
+  },
+  "providerReliability": [
+    {
+      "provider": "animepahe",
+      "success": 3,
+      "fail": 0,
+      "successPct": 100,
+      "notes": [
+        "search ok",
+        "anime details ok",
+        "stream ok"
+      ]
+    }
+  ],
+  "apiReliability": [
+    {
+      "endpoint": "/api/providers",
+      "success": 1,
+      "fail": 0,
+      "notes": [
+        "status 200"
+      ]
+    },
+    {
+      "endpoint": "/api/search",
+      "success": 1,
+      "fail": 0,
+      "notes": [
+        "provider=animepahe status=200"
+      ]
+    },
+    {
+      "endpoint": "/api/anime/:id",
+      "success": 1,
+      "fail": 0,
+      "notes": [
+        "provider=animepahe status=200"
+      ]
+    },
+    {
+      "endpoint": "/api/watch",
+      "success": 1,
+      "fail": 0,
+      "notes": [
+        "provider=animepahe status=200"
+      ]
+    },
+    {
+      "endpoint": "/api/image",
+      "success": 1,
+      "fail": 0,
+      "notes": [
+        "status=200"
+      ]
+    },
+    {
+      "endpoint": "/api/stream",
+      "success": 1,
+      "fail": 1,
+      "notes": [
+        "status=200",
+        "Invalid URL"
+      ]
+    },
+    {
+      "endpoint": "/api/hls",
+      "success": 0,
+      "fail": 1,
+      "notes": [
+        "Not testable after stream failure: Invalid URL"
+      ]
+    }
+  ],
+  "streamingReliability": [
+    {
+      "type": "HLS",
+      "success": 1,
+      "fail": 0,
+      "notes": [
+        "hls source present"
+      ]
+    },
+    {
+      "type": "MP4",
+      "success": 1,
+      "fail": 0,
+      "notes": [
+        "mp4 source present"
+      ]
+    },
+    {
+      "type": "Broken stream handling",
+      "success": 0,
+      "fail": 1,
+      "notes": [
+        "watch endpoint healthy"
+      ]
+    }
+  ],
+  "detailedResults": [
+    {
+      "testName": "provider search",
+      "endpointOrProvider": "animepahe",
+      "area": "provider",
+      "status": "PASS",
+      "reason": "",
+      "at": "2026-03-26T10:11:47.284Z"
+    },
+    {
+      "testName": "provider anime details",
+      "endpointOrProvider": "animepahe",
+      "area": "provider",
+      "status": "PASS",
+      "reason": "",
+      "at": "2026-03-26T10:11:47.925Z"
+    },
+    {
+      "testName": "provider stream",
+      "endpointOrProvider": "animepahe",
+      "area": "provider",
+      "status": "PASS",
+      "reason": "",
+      "at": "2026-03-26T10:11:55.421Z"
+    },
+    {
+      "testName": "api providers",
+      "endpointOrProvider": "/api/providers",
+      "area": "api",
+      "status": "PASS",
+      "reason": "",
+      "at": "2026-03-26T10:11:55.440Z"
+    },
+    {
+      "testName": "api search",
+      "endpointOrProvider": "/api/search",
+      "area": "api",
+      "status": "PASS",
+      "reason": "",
+      "at": "2026-03-26T10:11:55.952Z"
+    },
+    {
+      "testName": "api anime details",
+      "endpointOrProvider": "/api/anime/:id",
+      "area": "api",
+      "status": "PASS",
+      "reason": "",
+      "at": "2026-03-26T10:11:56.534Z"
+    },
+    {
+      "testName": "api watch",
+      "endpointOrProvider": "/api/watch",
+      "area": "api",
+      "status": "PASS",
+      "reason": "",
+      "at": "2026-03-26T10:12:03.024Z"
+    },
+    {
+      "testName": "api image",
+      "endpointOrProvider": "/api/image",
+      "area": "api",
+      "status": "PASS",
+      "reason": "",
+      "at": "2026-03-26T10:12:03.795Z"
+    },
+    {
+      "testName": "api stream",
+      "endpointOrProvider": "/api/stream",
+      "area": "api",
+      "status": "PASS",
+      "reason": "",
+      "at": "2026-03-26T10:12:04.831Z"
+    },
+    {
+      "testName": "api stream",
+      "endpointOrProvider": "/api/stream",
+      "area": "api",
+      "status": "FAIL",
+      "reason": "Invalid URL",
+      "at": "2026-03-26T10:12:04.832Z"
+    },
+    {
+      "testName": "frontend flow simulation (search->watch)",
+      "endpointOrProvider": "frontend-simulated-via-api",
+      "area": "frontend",
+      "status": "PASS",
+      "reason": "",
+      "at": "2026-03-26T10:12:12.319Z"
+    }
+  ]
+}

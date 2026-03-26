@@ -13,6 +13,12 @@ const Footer = () => {
             <p className="text-gray-400 text-sm">
               The world's largest dedicated Anime collection on demand.
             </p>
+            <p className="text-gray-500 text-xs mt-3">
+              Created by Sourabh Singh (B.C.A)
+            </p>
+            <p className="text-gray-500 text-xs mt-1 break-all">
+              sourabhsingh240402@gmail.com
+            </p>
           </div>
 
           {/* Quick Links */}
@@ -85,7 +91,7 @@ const Footer = () => {
         {/* Copyright */}
         <div className="border-t border-gray-800 pt-8 text-center">
           <p className="text-gray-400 text-sm">
-            © {new Date().getFullYear()} Animeprix. All rights reserved.
+            © {new Date().getFullYear()} Sourabh Singh. All rights reserved.
           </p>
         </div>
       </div>

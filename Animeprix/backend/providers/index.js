@@ -26,6 +26,8 @@ function createProviders(baseUrl, headers) {
 }
 
 let providerMap = null;
+const DEFAULT_PROVIDER = 'animepahe';
+const ACTIVE_PROVIDERS = [DEFAULT_PROVIDER];
 
 export function initProviders(baseUrl, headers = {}) {
   providerMap = createProviders(baseUrl, headers);
@@ -34,17 +36,22 @@ export function initProviders(baseUrl, headers = {}) {
 
 export function getProvider(name) {
   if (!providerMap) throw new Error('Providers not initialized');
-  if (!name || typeof name !== 'string') {
-    throw new Error('Provider name is required');
+  const requested = (typeof name === 'string' ? name : DEFAULT_PROVIDER).toLowerCase().trim();
+  if (!requested || requested !== DEFAULT_PROVIDER) {
+    // Disabled due to upstream instability. Keep adapters for future re-activation.
+    console.warn(`[provider-router] Requested "${name || 'undefined'}", using fallback "${DEFAULT_PROVIDER}"`);
   }
-  const key = name.toLowerCase().trim();
-  if (!providerMap[key]) {
-    throw new Error(`Invalid provider: ${name}. Valid: ${Object.keys(providerMap).join(', ')}`);
-  }
-  return providerMap[key];
+  return providerMap[DEFAULT_PROVIDER];
+}
+
+export function getAvailableProviders() {
+  return [...ACTIVE_PROVIDERS];
+}
+
+export function getDefaultProvider() {
+  return DEFAULT_PROVIDER;
 }
 
 export function listProviders() {
-  if (!providerMap) return [];
-  return Object.keys(providerMap);
+  return getAvailableProviders();
 }

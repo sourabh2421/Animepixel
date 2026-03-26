@@ -23,7 +23,7 @@ const ContactUs = () => {
                 </label>
                 <input
                   type="text"
-                  placeholder="Your name"
+                  placeholder="Sourabh Singh"
                   className="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-cr-orange"
                 />
               </div>
@@ -34,7 +34,7 @@ const ContactUs = () => {
                 </label>
                 <input
                   type="email"
-                  placeholder="your.email@example.com"
+                  placeholder="sourabhsingh240402@gmail.com"
                   className="w-full bg-gray-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-cr-orange"
                 />
               </div>
@@ -72,16 +72,16 @@ const ContactUs = () => {
 
           <div className="mt-12 grid md:grid-cols-3 gap-6">
             <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 text-center">
+              <h3 className="text-white font-semibold mb-2">Name</h3>
+              <p className="text-gray-400 text-sm">Sourabh Singh</p>
+            </div>
+            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 text-center">
               <h3 className="text-white font-semibold mb-2">Email</h3>
-              <p className="text-gray-400 text-sm">support@animeprix.com</p>
+              <p className="text-gray-400 text-sm">sourabhsingh240402@gmail.com</p>
             </div>
             <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 text-center">
-              <h3 className="text-white font-semibold mb-2">Response Time</h3>
-              <p className="text-gray-400 text-sm">Within 24 hours</p>
-            </div>
-            <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 text-center">
-              <h3 className="text-white font-semibold mb-2">Support Hours</h3>
-              <p className="text-gray-400 text-sm">24/7 Available</p>
+              <h3 className="text-white font-semibold mb-2">Education</h3>
+              <p className="text-gray-400 text-sm">B.C.A</p>
             </div>
           </div>
         </div>

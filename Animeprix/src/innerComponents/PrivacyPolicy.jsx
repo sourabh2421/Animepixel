@@ -81,7 +81,7 @@ const PrivacyPolicy = () => {
             <section>
               <h2 className="text-2xl font-semibold text-white mb-4">7. Contact Us</h2>
               <p className="text-gray-400 leading-relaxed">
-                If you have any questions about this Privacy Policy, please contact us at privacy@animeprix.com or through our contact page.
+                If you have any questions about this Privacy Policy, please contact Sourabh Singh at sourabhsingh240402@gmail.com.
               </p>
             </section>
           </div>
