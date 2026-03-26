@@ -31,11 +31,24 @@ if (API_KEY_REQUIRED && !API_KEY) {
   throw new Error('Missing API_KEY in environment. Set API_KEY or disable API_KEY_REQUIRED.');
 }
 
-if (process.env.NODE_ENV !== 'production') {
-  app.use(cors({ origin: '*', credentials: true }));
+const allowedOrigins = Array.from(new Set([
+  'http://localhost:5173',
+  'https://animepixel-three.vercel.app',
+  FRONTEND_ORIGIN,
+].filter(Boolean)));
+
+// TEMP: set CORS_ALLOW_ALL=true only for emergency debugging, then remove/disable in production.
+if (process.env.CORS_ALLOW_ALL === 'true') {
+  app.use(cors({ origin: '*' }));
 } else {
   app.use(cors({
-    origin: ['http://localhost:5173', FRONTEND_ORIGIN],
+    origin(origin, callback) {
+      // Allow non-browser requests (Postman/curl/server-to-server).
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      console.log('Blocked by CORS:', origin);
+      return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
   }));
 }
@@ -359,6 +372,8 @@ const rewriteM3u8Manifest = (manifestText, baseUrl, req) => {
 // ─── HLS segment/key proxy: fetch with provider headers, stream back with correct Content-Type (fixes HLS bufferAppendError/mediaError).
 app.get('/api/hls', async (req, res) => {
   try {
+    // Proxy routes may be fetched directly by media players.
+    res.setHeader('Access-Control-Allow-Origin', '*');
     const { url } = req.query;
     if (!url || typeof url !== 'string') {
       return res.status(400).json({ error: 'url query param is required' });
@@ -430,6 +445,8 @@ app.get('/api/hls', async (req, res) => {
 
 app.get('/api/stream', async (req, res) => {
   try {
+    // Proxy routes may be fetched directly by media players.
+    res.setHeader('Access-Control-Allow-Origin', '*');
     const { url } = req.query;
     if (!url || typeof url !== 'string') {
       return res.status(400).json({ error: 'url query param is required' });
