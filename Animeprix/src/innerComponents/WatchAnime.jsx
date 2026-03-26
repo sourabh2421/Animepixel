@@ -169,7 +169,7 @@ const WatchAnime = () => {
       const isHealthy = await checkBackendHealth();
       setBackendAvailable(isHealthy);
       if (!isHealthy) {
-        setError('Backend server is not available. Please start it on port 3001.');
+        setError('Unable to connect to server. Please try again later.');
         setUseExternalPlayer(true);
         setLoadingEpisode(false);
         return;
@@ -570,7 +570,7 @@ const WatchAnime = () => {
               </div>
               {!backendAvailable && (
                 <p className="text-yellow-500 text-sm text-center mt-4">
-                  ⚠️ Backend not responding. Start it on port 3001.
+                  ⚠️ Backend is currently unavailable. Please try again shortly.
                 </p>
               )}
             </div>

@@ -1,5 +1,8 @@
 // Backend health check utility
-const BACKEND_API = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001/api';
+const RAW_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://animepixel.onrender.com';
+const BACKEND_API = String(RAW_BASE_URL).replace(/\/+$/, '').endsWith('/api')
+  ? String(RAW_BASE_URL).replace(/\/+$/, '')
+  : `${String(RAW_BASE_URL).replace(/\/+$/, '')}/api`;
 
 let healthCheckCache = {
   status: null,

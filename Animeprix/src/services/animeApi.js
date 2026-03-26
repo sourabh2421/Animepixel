@@ -2,12 +2,12 @@
 // Images remain proxied (anti-hotlink), but video prefers direct playback for lower latency.
 const RAW_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
-  import.meta.env.VITE_BACKEND_URL ||
-  'http://localhost:10000';
+  'https://animepixel.onrender.com';
 const BASE_URL = String(RAW_BASE_URL).replace(/\/+$/, '').endsWith('/api')
   ? String(RAW_BASE_URL).replace(/\/+$/, '')
   : `${String(RAW_BASE_URL).replace(/\/+$/, '')}/api`;
 const STABLE_PROVIDER = 'animepahe';
+console.log('API BASE URL:', BASE_URL);
 
 /** Proxify image URL so browser never hits i.animepahe.si directly (avoids 403). */
 export const proxyImageUrl = (url) => {
@@ -33,9 +33,7 @@ const fetchFromBackend = async (endpoint) => {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
     }).catch((networkError) => {
-      throw new Error(
-        'Cannot connect to backend server. Make sure it is running on port 3001. Run "cd backend && npm start".'
-      );
+      throw new Error('Unable to connect to server. Please try again later.');
     });
 
     if (!response.ok) {
@@ -51,9 +49,7 @@ const fetchFromBackend = async (endpoint) => {
       error.message.includes('NetworkError') ||
       error.message.includes('Load failed')
     ) {
-      throw new Error(
-        'Cannot connect to backend server. Make sure the backend is running on port 3001.'
-      );
+      throw new Error('Unable to connect to server. Please try again later.');
     }
     throw error;
   }
@@ -166,11 +162,14 @@ export const getStreamingLinks = async (episodeId, provider) => {
 export const getTrendingAnime = async () => fetchFromBackend('/trending');
 
 // ─── Direct Consumet search (used only by AnimeSearch page)
-const CONSUMET_API_BASE = 'http://localhost:3002/anime';
+const CONSUMET_API_BASE = String(import.meta.env.VITE_CONSUMET_API_BASE || '').replace(/\/+$/, '');
 const VALID_PROVIDERS = ['animepahe', 'animeunity', 'hianime', 'animekai', 'animesaturn', 'kickassanime'];
 
 export const searchAnimeDirect = async (animeName, provider = 'animepahe') => {
   if (!animeName?.trim()) throw new Error('Anime name is required');
+  if (!CONSUMET_API_BASE) {
+    throw new Error('Consumet API endpoint is not configured.');
+  }
   if (!VALID_PROVIDERS.includes(provider))
     throw new Error(`Invalid provider. Must be one of: ${VALID_PROVIDERS.join(', ')}`);
 

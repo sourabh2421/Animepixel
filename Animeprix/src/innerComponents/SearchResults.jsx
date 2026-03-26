@@ -113,7 +113,7 @@ const SearchResults = () => {
                   <li>Open a new terminal window</li>
                   <li>Navigate to the backend folder: <code className="bg-red-950 px-2 py-1 rounded">cd backend</code></li>
                   <li>Start the backend server: <code className="bg-red-950 px-2 py-1 rounded">npm start</code></li>
-                  <li>Wait for the message: "🚀 Animeprix Backend Server running on http://localhost:3001"</li>
+                  <li>Wait until the backend deployment status is healthy</li>
                   <li>Refresh this page and try searching again</li>
                 </ol>
               </div>

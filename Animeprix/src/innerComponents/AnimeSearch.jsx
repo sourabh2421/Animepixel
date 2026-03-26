@@ -48,7 +48,7 @@ const AnimeSearch = () => {
       }
     } catch (err) {
       console.error('Search error:', err);
-      setError(`Failed to fetch results: ${err.message}. Make sure Consumet API is running on http://localhost:3002`);
+      setError(`Failed to fetch results: ${err.message}. Please verify the API endpoint configuration.`);
       setResults([]);
     } finally {
       setLoading(false);
@@ -126,13 +126,12 @@ const AnimeSearch = () => {
           <div className="max-w-4xl mx-auto mb-8">
             <div className="bg-red-900/50 border border-red-700 rounded-lg p-6">
               <p className="text-red-200 font-semibold">{error}</p>
-              {error.includes('localhost:3002') && (
+              {error.includes('Consumet API endpoint is not configured') && (
                 <div className="text-red-300 text-sm mt-3">
                   <p className="font-semibold mb-2">To fix this:</p>
                   <ol className="list-decimal list-inside space-y-1 ml-2">
-                    <li>Open a terminal and navigate to: <code className="bg-red-950 px-2 py-1 rounded">cd consumet-api</code></li>
-                    <li>Start the Consumet API: <code className="bg-red-950 px-2 py-1 rounded">npm start</code></li>
-                    <li>Wait for: "server listening on http://0.0.0.0:3002"</li>
+                    <li>Add <code className="bg-red-950 px-2 py-1 rounded">VITE_CONSUMET_API_BASE</code> in your frontend environment</li>
+                    <li>Set it to your deployed Consumet endpoint (example: <code className="bg-red-950 px-2 py-1 rounded">https://your-consumet-service.onrender.com/anime</code>)</li>
                     <li>Refresh this page and try again</li>
                   </ol>
                 </div>
