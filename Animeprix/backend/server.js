@@ -16,7 +16,11 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 const FRONTEND_ORIGIN = process.env.FRONTEND_URL || 'http://localhost:5173';
-const API_BASE_URL = process.env.API_BASE_URL || process.env.CONSUMET_API_URL || 'http://localhost:3002/anime';
+const API_BASE_URL =
+  process.env.CONSUMET_URL ||
+  process.env.API_BASE_URL ||
+  process.env.CONSUMET_API_URL ||
+  'http://localhost:3002/anime';
 const API_KEY = process.env.API_KEY || '';
 const API_KEY_REQUIRED = process.env.API_KEY_REQUIRED === 'true';
 
@@ -27,16 +31,14 @@ if (API_KEY_REQUIRED && !API_KEY) {
   throw new Error('Missing API_KEY in environment. Set API_KEY or disable API_KEY_REQUIRED.');
 }
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || origin === FRONTEND_ORIGIN || /^http:\/\/localhost:\d+$/.test(origin)) {
-      callback(null, true);
-      return;
-    }
-    callback(new Error(`CORS blocked for origin: ${origin}`));
-  },
-  credentials: true,
-}));
+if (process.env.NODE_ENV !== 'production') {
+  app.use(cors({ origin: '*', credentials: true }));
+} else {
+  app.use(cors({
+    origin: ['http://localhost:5173', FRONTEND_ORIGIN],
+    credentials: true,
+  }));
+}
 app.use(express.json());
 
 const consumerAxiosHeaders = {

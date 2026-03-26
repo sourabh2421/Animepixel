@@ -1,6 +1,12 @@
 // Anime API Service
 // Images remain proxied (anti-hotlink), but video prefers direct playback for lower latency.
-const BACKEND_API = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001/api';
+const RAW_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_BACKEND_URL ||
+  'http://localhost:10000';
+const BASE_URL = String(RAW_BASE_URL).replace(/\/+$/, '').endsWith('/api')
+  ? String(RAW_BASE_URL).replace(/\/+$/, '')
+  : `${String(RAW_BASE_URL).replace(/\/+$/, '')}/api`;
 const STABLE_PROVIDER = 'animepahe';
 
 /** Proxify image URL so browser never hits i.animepahe.si directly (avoids 403). */
@@ -8,19 +14,19 @@ export const proxyImageUrl = (url) => {
   if (!url || typeof url !== 'string') return url;
   if (!/^https?:\/\//i.test(url)) return url;
   if (url.includes('/api/image?url=')) return url;
-  return `${BACKEND_API}/image?url=${encodeURIComponent(url)}`;
+  return `${BASE_URL}/image?url=${encodeURIComponent(url)}`;
 };
 
 export const buildProxyMediaUrl = (url) => {
   if (!url || typeof url !== 'string') return url;
   if (!/^https?:\/\//i.test(url)) return url;
   if (url.includes('/api/stream?url=')) return url;
-  return `${BACKEND_API}/stream?url=${encodeURIComponent(url)}`;
+  return `${BASE_URL}/stream?url=${encodeURIComponent(url)}`;
 };
 
 const fetchFromBackend = async (endpoint) => {
   try {
-    const url = `${BACKEND_API}${endpoint}`;
+    const url = `${BASE_URL}${endpoint}`;
     console.log('Fetching from backend:', url);
 
     const response = await fetch(url, {
@@ -86,7 +92,7 @@ export const getStreamingLinks = async (episodeId, provider) => {
     const stableProvider = STABLE_PROVIDER;
     const endpoint = `/watch?episodeId=${encodeURIComponent(episodeId)}&provider=${encodeURIComponent(stableProvider)}`;
     console.log('[DEBUG] getStreamingLinks — episodeId:', episodeId);
-    console.log('[DEBUG] getStreamingLinks — backend URL:', `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001/api'}${endpoint}`);
+    console.log('[DEBUG] getStreamingLinks — backend URL:', `${BASE_URL}${endpoint}`);
 
     const data = await fetchFromBackend(endpoint);
     if (
